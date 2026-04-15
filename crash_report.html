@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QQ炫舞2 客户端崩溃数据对比分析报告</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.0.1/dist/chartjs-plugin-annotation.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: #e8e8e8;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header {
+            text-align: center; padding: 30px 20px; margin-bottom: 30px;
+            background: rgba(255,255,255,0.05); border-radius: 16px; border: 1px solid rgba(255,255,255,0.1);
+        }
+        .header h1 { font-size: 28px; color: #fff; margin-bottom: 10px; letter-spacing: 2px; }
+        .header .subtitle { font-size: 14px; color: #aaa; margin-bottom: 15px; }
+        .header .update-tag {
+            display: inline-block; padding: 6px 16px;
+            background: linear-gradient(135deg, #e74c3c, #c0392b); border-radius: 20px;
+            font-size: 13px; color: #fff; font-weight: 600;
+        }
+        .summary-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 30px; }
+        .card {
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px; padding: 20px; text-align: center; transition: transform 0.2s;
+        }
+        .card:hover { transform: translateY(-2px); }
+        .card .label { font-size: 12px; color: #999; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+        .card .value { font-size: 28px; font-weight: 700; }
+        .card .change { font-size: 13px; margin-top: 6px; }
+        .card .change.up { color: #e74c3c; }
+        .card .change.down { color: #2ecc71; }
+        .chart-section {
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px; padding: 24px; margin-bottom: 24px;
+        }
+        .chart-section h2 { font-size: 18px; color: #fff; margin-bottom: 6px; }
+        .chart-section .desc { font-size: 13px; color: #999; margin-bottom: 16px; }
+        .chart-container { position: relative; width: 100%; height: 380px; }
+        .chart-container.tall { height: 440px; }
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
+        .weekend-compare { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 30px; }
+        .weekend-box {
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px; padding: 20px;
+        }
+        .weekend-box h3 { font-size: 16px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .weekend-box .before { color: #4A90D9; }
+        .weekend-box .after { color: #ED7D31; }
+        .metric-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .metric-row .name { color: #bbb; font-size: 14px; }
+        .metric-row .val { font-weight: 600; font-size: 14px; }
+        .legend { display: flex; justify-content: center; gap: 30px; margin-bottom: 20px; }
+        .legend-item { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+        .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+        .insight-box {
+            background: rgba(46, 204, 113, 0.08); border: 1px solid rgba(46, 204, 113, 0.3);
+            border-radius: 10px; padding: 20px; margin-bottom: 24px;
+        }
+        .insight-box h3 { color: #2ecc71; font-size: 16px; margin-bottom: 12px; }
+        .insight-box ul { padding-left: 20px; }
+        .insight-box li { margin-bottom: 8px; font-size: 14px; color: #ddd; line-height: 1.6; }
+        .data-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+        .data-table th {
+            background: rgba(255,255,255,0.08); padding: 10px 12px; text-align: center;
+            font-size: 13px; color: #ccc; border-bottom: 2px solid rgba(255,255,255,0.15);
+        }
+        .data-table td { padding: 8px 12px; text-align: center; font-size: 13px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .data-table tr:hover td { background: rgba(255,255,255,0.03); }
+        .data-table .weekend { background: rgba(255,215,0,0.06); }
+        .data-table .before-period { color: #6cb4ee; }
+        .data-table .after-period { color: #f0a060; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+        @media (max-width: 900px) {
+            .summary-cards { grid-template-columns: repeat(2, 1fr); }
+            .two-col { grid-template-columns: 1fr; }
+            .weekend-compare { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <h1>🎮 QQ炫舞2 客户端崩溃数据对比分析</h1>
+        <div class="subtitle">数据周期: 2026.03.30 - 2026.04.12 | 更新节点: 2026.04.09</div>
+        <div class="update-tag">🔄 4月9日更新 — 下掉心动天街</div>
+    </div>
+
+    <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:#4A90D9"></div>更新前 (3/30 - 4/8)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:#ED7D31"></div>更新后 (4/9 - 4/12)</div>
+        <div class="legend-item"><div class="legend-dot" style="background:rgba(255,215,0,0.8)"></div>⭐ 周末日期</div>
+    </div>
+
+    <div class="summary-cards">
+        <div class="card">
+            <div class="label">更新前 日均崩溃人数</div>
+            <div class="value" style="color:#4A90D9">680.4</div>
+            <div class="change">周末均值: 708.5</div>
+        </div>
+        <div class="card">
+            <div class="label">更新后 日均崩溃人数</div>
+            <div class="value" style="color:#ED7D31">707.5</div>
+            <div class="change up">
+                ↑ 4.0% vs 更新前
+            </div>
+        </div>
+        <div class="card">
+            <div class="label">更新前 日均崩溃率</div>
+            <div class="value" style="color:#4A90D9">1.13%</div>
+            <div class="change">周末均值: 1.19%</div>
+        </div>
+        <div class="card">
+            <div class="label">更新后 日均崩溃率</div>
+            <div class="value" style="color:#ED7D31">1.26%</div>
+            <div class="change up">
+                ↑ 0.13pp vs 更新前
+            </div>
+        </div>
+    </div>
+
+    <div class="weekend-compare">
+        <div class="weekend-box">
+            <h3>📅 更新前周末 <span class="before">(4/4-5 周六日)</span></h3>
+            <div class="metric-row"><span class="name">日均崩溃人数</span><span class="val" style="color:#4A90D9">708.5</span></div>
+            <div class="metric-row"><span class="name">日均崩溃次数</span><span class="val" style="color:#4A90D9">1068.0</span></div>
+            <div class="metric-row"><span class="name">日均崩溃率</span><span class="val" style="color:#4A90D9">1.19%</span></div>
+            <div class="metric-row"><span class="name">人均崩溃次数</span><span class="val" style="color:#4A90D9">1.51</span></div>
+        </div>
+        <div class="weekend-box">
+            <h3>📅 更新后周末 <span class="after">(4/11-12 周六日)</span></h3>
+            <div class="metric-row"><span class="name">日均崩溃人数</span><span class="val" style="color:#ED7D31">766.0</span></div>
+            <div class="metric-row"><span class="name">日均崩溃次数</span><span class="val" style="color:#ED7D31">1200.5</span></div>
+            <div class="metric-row"><span class="name">日均崩溃率</span><span class="val" style="color:#ED7D31">1.25%</span></div>
+            <div class="metric-row"><span class="name">人均崩溃次数</span><span class="val" style="color:#ED7D31">1.57</span></div>
+        </div>
+    </div>
+
+    <div class="insight-box">
+        <h3>🔍 周末对比核心发现</h3>
+        <ul>
+            <li><b>崩溃人数:</b> 更新前周末日均 708.5 人，更新后周末日均 766.0 人，增长了 8.1%</li>
+            <li><b>崩溃率:</b> 更新前周末日均 1.19%，更新后周末日均 1.25%，上升 0.06 个百分点</li>
+            <li><b>人均崩溃:</b> 更新前周末人均 1.51 次，更新后周末人均 1.57 次</li>
+            <li><b>样本说明:</b> 更新前周末含2天数据(4/4周六, 4/5周日)，更新后周末含2天数据(4/11周六, 4/12周日)，样本量对等，对比可信度较高</li>
+        </ul>
+    </div>
+
+    <div class="chart-section">
+        <h2>📈 每日崩溃趋势总览</h2>
+        <div class="desc">纵轴左: 崩溃人数/次数 | 纵轴右: 崩溃率(%) | 红色虚线: 4月9日更新节点</div>
+        <div class="chart-container tall">
+            <canvas id="trendChart"></canvas>
+        </div>
+    </div>
+
+    <div class="two-col">
+        <div class="chart-section">
+            <h2>🏢 大区崩溃人数对比</h2>
+            <div class="desc">更新前周末(4/5) vs 更新后周末(4/12)</div>
+            <div class="chart-container">
+                <canvas id="regionUsersChart"></canvas>
+            </div>
+        </div>
+        <div class="chart-section">
+            <h2>🏢 大区崩溃次数对比</h2>
+            <div class="desc">更新前周末(4/5) vs 更新后周末(4/12)</div>
+            <div class="chart-container">
+                <canvas id="regionCountsChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="chart-section">
+        <h2>🎯 崩溃UI状态分布对比 (Top 8)</h2>
+        <div class="desc">各逻辑状态下的崩溃人数，更新前(4/5) vs 更新后(4/12)</div>
+        <div class="chart-container tall">
+            <canvas id="uiStateChart"></canvas>
+        </div>
+    </div>
+
+    <div class="chart-section">
+        <h2>📊 每日崩溃率柱状对比</h2>
+        <div class="desc">⭐ 标记为周末日期 | 红色虚线: 4月9日更新节点 | 虚线: 各阶段均值</div>
+        <div class="chart-container">
+            <canvas id="rateBarChart"></canvas>
+        </div>
+    </div>
+
+    <div class="chart-section">
+        <h2>📋 完整数据明细</h2>
+        <div class="desc">黄色高亮行为周末日期</div>
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>日期</th>
+                    <th>星期</th>
+                    <th>时期</th>
+                    <th>崩溃人数</th>
+                    <th>崩溃次数</th>
+                    <th>崩溃率(%)</th>
+                    <th>人均崩溃</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="">
+                    <td>03/30</td>
+                    <td>周一</td>
+                    <td class="before-period">更新前</td>
+                    <td>819</td>
+                    <td>1243</td>
+                    <td>1.43</td>
+                    <td>1.52</td>
+                </tr>
+                <tr class="">
+                    <td>03/31</td>
+                    <td>周二</td>
+                    <td class="before-period">更新前</td>
+                    <td>668</td>
+                    <td>1002</td>
+                    <td>1.19</td>
+                    <td>1.5</td>
+                </tr>
+                <tr class="">
+                    <td>04/01</td>
+                    <td>周三</td>
+                    <td class="before-period">更新前</td>
+                    <td>740</td>
+                    <td>1134</td>
+                    <td>0.93</td>
+                    <td>1.53</td>
+                </tr>
+                <tr class="">
+                    <td>04/02</td>
+                    <td>周四</td>
+                    <td class="before-period">更新前</td>
+                    <td>532</td>
+                    <td>782</td>
+                    <td>0.93</td>
+                    <td>1.47</td>
+                </tr>
+                <tr class="">
+                    <td>04/03</td>
+                    <td>周五</td>
+                    <td class="before-period">更新前</td>
+                    <td>626</td>
+                    <td>996</td>
+                    <td>1.13</td>
+                    <td>1.59</td>
+                </tr>
+                <tr class=" weekend">
+                    <td>04/04</td>
+                    <td>周六⭐</td>
+                    <td class="before-period">更新前</td>
+                    <td>718</td>
+                    <td>1069</td>
+                    <td>1.14</td>
+                    <td>1.49</td>
+                </tr>
+                <tr class=" weekend">
+                    <td>04/05</td>
+                    <td>周日⭐</td>
+                    <td class="before-period">更新前</td>
+                    <td>699</td>
+                    <td>1067</td>
+                    <td>1.23</td>
+                    <td>1.53</td>
+                </tr>
+                <tr class="">
+                    <td>04/06</td>
+                    <td>周一</td>
+                    <td class="before-period">更新前</td>
+                    <td>844</td>
+                    <td>1368</td>
+                    <td>1.4</td>
+                    <td>1.62</td>
+                </tr>
+                <tr class="">
+                    <td>04/07</td>
+                    <td>周二</td>
+                    <td class="before-period">更新前</td>
+                    <td>592</td>
+                    <td>871</td>
+                    <td>1.1</td>
+                    <td>1.47</td>
+                </tr>
+                <tr class="">
+                    <td>04/08</td>
+                    <td>周三</td>
+                    <td class="before-period">更新前</td>
+                    <td>566</td>
+                    <td>894</td>
+                    <td>0.86</td>
+                    <td>1.58</td>
+                </tr>
+                <tr class="">
+                    <td>04/09</td>
+                    <td>周四</td>
+                    <td class="after-period">更新后</td>
+                    <td>600</td>
+                    <td>872</td>
+                    <td>1.13</td>
+                    <td>1.45</td>
+                </tr>
+                <tr class="">
+                    <td>04/10</td>
+                    <td>周五</td>
+                    <td class="after-period">更新后</td>
+                    <td>698</td>
+                    <td>1046</td>
+                    <td>1.41</td>
+                    <td>1.5</td>
+                </tr>
+                <tr class=" weekend">
+                    <td>04/11</td>
+                    <td>周六⭐</td>
+                    <td class="after-period">更新后</td>
+                    <td>798</td>
+                    <td>1309</td>
+                    <td>1.13</td>
+                    <td>1.64</td>
+                </tr>
+                <tr class=" weekend">
+                    <td>04/12</td>
+                    <td>周日⭐</td>
+                    <td class="after-period">更新后</td>
+                    <td>734</td>
+                    <td>1092</td>
+                    <td>1.37</td>
+                    <td>1.49</td>
+                </tr>
+                <tr style="border-top:2px solid rgba(255,255,255,0.2); font-weight:bold;">
+                    <td colspan="2">更新前均值</td>
+                    <td class="before-period">N=10天</td>
+                    <td style="color:#4A90D9">680.4</td>
+                    <td style="color:#4A90D9">1042.6</td>
+                    <td style="color:#4A90D9">1.13</td>
+                    <td>—</td>
+                </tr>
+                <tr style="font-weight:bold;">
+                    <td colspan="2">更新后均值</td>
+                    <td class="after-period">N=4天</td>
+                    <td style="color:#ED7D31">707.5</td>
+                    <td style="color:#ED7D31">1079.75</td>
+                    <td style="color:#ED7D31">1.26</td>
+                    <td>—</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="insight-box">
+        <h3>💡 运营分析建议</h3>
+        <ul>
+            <li><b>崩溃率变化趋势:</b> 更新后日均崩溃率 1.26%，较更新前 1.13% 上升了 0.13 个百分点。需关注4月9日更新后是否引入了新的崩溃问题，建议重点排查新增的崩溃堆栈。</li>
+            <li><b>周末高峰效应:</b> 周末崩溃人数普遍高于工作日（更新前工作日均值 673.38，周末 708.5；更新后工作日均值 649.0，周末 766.0），符合预期的周末用户活跃度提升规律。</li>
+            <li><b>大区维度:</b> 各大区崩溃分布格局相对稳定，奇舞飞扬和巨星舞台持续占据崩溃前两位，可重点关注这两个大区是否存在特殊的玩家行为模式或技术环境差异。</li>
+            <li><b>UI状态维度:</b> "等待房间/舞蹈房间"状态下的崩溃占比最高，建议重点排查该场景下的内存和渲染问题。</li>
+            <li><b>后续建议:</b> 建议持续跟踪至少2周以上数据，确认更新效果的稳定性；同时可专项分析心动天街相关功能模块在更新前后的崩溃占比变化。</li>
+        </ul>
+    </div>
+
+    <div class="footer">
+        报告生成时间: 2026-04-15 | 数据来源: X5_TestTeam 客户端崩溃数据报告 | QQ炫舞2运营分析
+    </div>
+</div>
+
+<script>
+Chart.defaults.color = '#ccc';
+Chart.defaults.borderColor = 'rgba(255,255,255,0.1)';
+
+const dates = ["03/30", "03/31", "04/01", "04/02", "04/03", "04/04", "04/05", "04/06", "04/07", "04/08", "04/09", "04/10", "04/11", "04/12"];
+const crashUsers = [819, 668, 740, 532, 626, 718, 699, 844, 592, 566, 600, 698, 798, 734];
+const crashCounts = [1243, 1002, 1134, 782, 996, 1069, 1067, 1368, 871, 894, 872, 1046, 1309, 1092];
+const crashRates = [1.43, 1.19, 0.93, 0.93, 1.13, 1.14, 1.23, 1.4, 1.1, 0.86, 1.13, 1.41, 1.13, 1.37];
+const isWeekend = [false, false, false, false, false, true, true, false, false, false, false, false, true, true];
+const updateIdx = dates.indexOf('04/09');
+
+// Chart 1: 整体趋势
+const ctx1 = document.getElementById('trendChart').getContext('2d');
+new Chart(ctx1, {
+    type: 'bar',
+    data: {
+        labels: dates,
+        datasets: [
+            {
+                type: 'bar',
+                label: '崩溃人数',
+                data: crashUsers,
+                backgroundColor: dates.map((_, i) => i < updateIdx ? 'rgba(74,144,217,0.7)' : 'rgba(237,125,49,0.7)'),
+                borderColor: dates.map((_, i) => i < updateIdx ? '#4A90D9' : '#ED7D31'),
+                borderWidth: 1,
+                yAxisID: 'y',
+                order: 2
+            },
+            {
+                type: 'bar',
+                label: '崩溃次数',
+                data: crashCounts,
+                backgroundColor: dates.map((_, i) => i < updateIdx ? 'rgba(91,155,213,0.35)' : 'rgba(244,177,131,0.35)'),
+                borderColor: dates.map((_, i) => i < updateIdx ? 'rgba(91,155,213,0.7)' : 'rgba(244,177,131,0.7)'),
+                borderWidth: 1,
+                yAxisID: 'y',
+                order: 3
+            },
+            {
+                type: 'line',
+                label: '崩溃率(%)',
+                data: crashRates,
+                borderColor: '#e74c3c',
+                backgroundColor: 'rgba(231,76,60,0.08)',
+                pointBackgroundColor: dates.map((_, i) => isWeekend[i] ? '#FFD700' : '#e74c3c'),
+                pointRadius: dates.map((_, i) => isWeekend[i] ? 7 : 4),
+                pointBorderColor: dates.map((_, i) => isWeekend[i] ? '#FFD700' : '#e74c3c'),
+                pointBorderWidth: 2,
+                borderWidth: 2.5,
+                tension: 0.3,
+                yAxisID: 'y1',
+                fill: true,
+                order: 1
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+            annotation: {
+                annotations: {
+                    updateLine: {
+                        type: 'line',
+                        xMin: updateIdx - 0.5, xMax: updateIdx - 0.5,
+                        borderColor: 'rgba(231,76,60,0.8)', borderWidth: 2, borderDash: [6, 4],
+                        label: {
+                            display: true, content: '4/9 更新', position: 'start',
+                            backgroundColor: 'rgba(231,76,60,0.8)', color: '#fff', font: { size: 11 }
+                        }
+                    }
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    afterLabel: function(ctx) {
+                        return isWeekend[ctx.dataIndex] ? '⭐ 周末' : '';
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                type: 'linear', position: 'left',
+                title: { display: true, text: '人数 / 次数' },
+                grid: { color: 'rgba(255,255,255,0.05)' }
+            },
+            y1: {
+                type: 'linear', position: 'right',
+                title: { display: true, text: '崩溃率(%)' },
+                grid: { drawOnChartArea: false },
+                min: 0, max: 2
+            },
+            x: { grid: { color: 'rgba(255,255,255,0.05)' } }
+        }
+    }
+});
+
+// Chart 2: 大区崩溃人数
+const regionNames = ["\u5929\u7a7a\u4e4b\u57ce", "\u5947\u821e\u98de\u626c", "\u5de8\u661f\u821e\u53f0", "\u65b0\u661f\u65f6\u4ee3", "\u68a6\u60f3\u5bb6\u56ed", "\u738b\u56fd\u4e4b\u7ffc", "\u7687\u5bab\u5927\u6bbf"];
+new Chart(document.getElementById('regionUsersChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+        labels: regionNames,
+        datasets: [
+            { label: '更新前(4/5)', data: [106, 134, 132, 100, 88, 48, 70], backgroundColor: 'rgba(74,144,217,0.7)', borderColor: '#4A90D9', borderWidth: 1 },
+            { label: '更新后(4/12)', data: [114, 150, 118, 105, 97, 68, 71], backgroundColor: 'rgba(237,125,49,0.7)', borderColor: '#ED7D31', borderWidth: 1 }
+        ]
+    },
+    options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'top' } },
+        scales: {
+            x: { grid: { color: 'rgba(255,255,255,0.05)' } },
+            y: { grid: { color: 'rgba(255,255,255,0.05)' } }
+        }
+    }
+});
+
+// Chart 3: 大区崩溃次数
+new Chart(document.getElementById('regionCountsChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+        labels: regionNames,
+        datasets: [
+            { label: '更新前(4/5)', data: [163, 188, 201, 167, 130, 90, 103], backgroundColor: 'rgba(74,144,217,0.7)', borderColor: '#4A90D9', borderWidth: 1 },
+            { label: '更新后(4/12)', data: [186, 231, 172, 149, 145, 96, 100], backgroundColor: 'rgba(237,125,49,0.7)', borderColor: '#ED7D31', borderWidth: 1 }
+        ]
+    },
+    options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'top' } },
+        scales: {
+            x: { grid: { color: 'rgba(255,255,255,0.05)' } },
+            y: { grid: { color: 'rgba(255,255,255,0.05)' } }
+        }
+    }
+});
+
+// Chart 4: UI状态对比
+new Chart(document.getElementById('uiStateChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+        labels: ["\u7b49\u5f85\u623f\u95f4\u3001\u821e\u8e48\u623f\u95f4", "84", "\u6781\u7b80\u793e\u533a", "\u6e38\u620f\u4e2d", "\u5927\u5385\u4e2d\u3001\u821e\u8e48\u5927\u5385", "\u68a6\u60f3\u57ce", "\u5fae\u7aef\u767b\u5f55", "\u8eb2\u732b\u732b"],
+        datasets: [
+            { label: '更新前(4/5)', data: [162, 199, 77, 64, 70, 35, 46, 8], backgroundColor: 'rgba(74,144,217,0.7)', borderColor: '#4A90D9', borderWidth: 1 },
+            { label: '更新后(4/12)', data: [269, 95, 104, 82, 44, 48, 9, 41], backgroundColor: 'rgba(237,125,49,0.7)', borderColor: '#ED7D31', borderWidth: 1 }
+        ]
+    },
+    options: {
+        indexAxis: 'y',
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: 'top' } },
+        scales: {
+            x: { grid: { color: 'rgba(255,255,255,0.05)' } },
+            y: { grid: { color: 'rgba(255,255,255,0.05)' } }
+        }
+    }
+});
+
+// Chart 5: 崩溃率柱状
+new Chart(document.getElementById('rateBarChart').getContext('2d'), {
+    type: 'bar',
+    data: {
+        labels: dates.map((d, i) => isWeekend[i] ? d + ' ⭐' : d),
+        datasets: [{
+            label: '崩溃率(%)',
+            data: crashRates,
+            backgroundColor: dates.map((_, i) => {
+                if (isWeekend[i]) return i < updateIdx ? 'rgba(74,144,217,1)' : 'rgba(237,125,49,1)';
+                return i < updateIdx ? 'rgba(74,144,217,0.5)' : 'rgba(237,125,49,0.5)';
+            }),
+            borderColor: dates.map((_, i) => i < updateIdx ? '#4A90D9' : '#ED7D31'),
+            borderWidth: 1
+        }]
+    },
+    options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: {
+            annotation: {
+                annotations: {
+                    updateLine: {
+                        type: 'line',
+                        xMin: updateIdx - 0.5, xMax: updateIdx - 0.5,
+                        borderColor: 'rgba(231,76,60,0.8)', borderWidth: 2, borderDash: [6, 4],
+                        label: {
+                            display: true, content: '4/9 更新', position: 'start',
+                            backgroundColor: 'rgba(231,76,60,0.8)', color: '#fff', font: { size: 11 }
+                        }
+                    },
+                    avgBefore: {
+                        type: 'line',
+                        yMin: 1.13, yMax: 1.13,
+                        xMin: -0.5, xMax: updateIdx - 0.5,
+                        borderColor: 'rgba(74,144,217,0.6)', borderWidth: 1.5, borderDash: [4, 4],
+                        label: {
+                            display: true, content: '更新前均值 1.13%', position: 'start',
+                            backgroundColor: 'rgba(74,144,217,0.6)', color: '#fff', font: { size: 10 }
+                        }
+                    },
+                    avgAfter: {
+                        type: 'line',
+                        yMin: 1.26, yMax: 1.26,
+                        xMin: updateIdx - 0.5, xMax: 14 - 0.5,
+                        borderColor: 'rgba(237,125,49,0.6)', borderWidth: 1.5, borderDash: [4, 4],
+                        label: {
+                            display: true, content: '更新后均值 1.26%', position: 'end',
+                            backgroundColor: 'rgba(237,125,49,0.6)', color: '#fff', font: { size: 10 }
+                        }
+                    }
+                }
+            },
+            legend: { display: false }
+        },
+        scales: {
+            y: { min: 0, max: 2, title: { display: true, text: '崩溃率(%)' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+            x: { grid: { color: 'rgba(255,255,255,0.05)' } }
+        }
+    }
+});
+</script>
+</body>
+</html>
